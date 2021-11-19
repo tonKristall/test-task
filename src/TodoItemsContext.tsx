@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useContext, useEffect, useReducer } from 'react';
+import { createContext, ReactNode, Reducer, useContext, useEffect, useReducer } from 'react';
+import { DraggableLocation, DropResult } from 'react-beautiful-dnd';
 
 export interface TodoItem {
   id: string;
@@ -6,23 +7,36 @@ export interface TodoItem {
   details?: string;
   done: boolean;
 }
+export interface TodoItemNew {
+  title: string;
+  details?: string;
+}
+
 
 interface TodoItemsState {
   todoItems: TodoItem[];
 }
 
+interface IData {
+  sortedItems?: TodoItem[];
+  id?: string;
+  dragResult?: DropResult;
+  todoItem?: TodoItem;
+  todoItems?: TodoItem[];
+  todoItemNew?: TodoItemNew
+}
 interface TodoItemsAction {
   type: 'loadState' | 'add' | 'delete' | 'toggleDone' | 'saveDrop';
-  data: any;
+  data: IData;
 }
 
 const TodoItemsContext = createContext<(TodoItemsState & { dispatch: (action: TodoItemsAction) => void }) | null>(null);
 
-const defaultState = { todoItems: [] };
+const defaultState: TodoItemsState = { todoItems: [] };
 const localStorageKey = 'todoListState';
 
 export const TodoItemsContextProvider = ({ children }: { children?: ReactNode }) => {
-  const [state, dispatch] = useReducer(todoItemsReducer, defaultState);
+  const [state, dispatch] = useReducer<Reducer<TodoItemsState, TodoItemsAction>>(todoItemsReducer, defaultState);
 
   useEffect(() => {
     const savedState = localStorage.getItem(localStorageKey);
@@ -37,7 +51,9 @@ export const TodoItemsContextProvider = ({ children }: { children?: ReactNode })
     localStorage.setItem(localStorageKey, JSON.stringify(state));
   }, [state]);
 
-  return <TodoItemsContext.Provider value={{ ...state, dispatch }}>{children}</TodoItemsContext.Provider>;
+  return (
+    <TodoItemsContext.Provider value={{ ...(state as TodoItemsState), dispatch }}>{children}</TodoItemsContext.Provider>
+  );
 };
 
 export const useTodoItems = () => {
@@ -50,10 +66,15 @@ export const useTodoItems = () => {
   return todoItemsContext;
 };
 
-function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction) {
+function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction): TodoItemsState {
   switch (action.type) {
     case 'saveDrop': {
-      if (action.data && action.data.dragResult.destination) {
+      if (
+        action.data &&
+        action.data.dragResult &&
+        (action.data.dragResult as DropResult).destination &&
+        action.data.sortedItems
+      ) {
         const reorder = (list: TodoItem[], startIndex: number, endIndex: number) => {
           const result = Array.from(list);
           const [removed] = result.splice(startIndex, 1);
@@ -61,21 +82,21 @@ function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction) {
           return result;
         };
         action.data.sortedItems = reorder(
-          action.data.sortedItems,
-          action.data.dragResult.source.index,
-          action.data.dragResult.destination.index
+          action.data.sortedItems as TodoItem[],
+          (action.data.dragResult as DropResult).source.index,
+          ((action.data.dragResult as DropResult).destination as DraggableLocation).index
         );
         return { todoItems: [...action.data.sortedItems] };
       }
-      return state;
+      return { ...state };
     }
     case 'loadState': {
-      return action.data;
+      return (action.data as TodoItemsState);
     }
     case 'add':
       return {
         ...state,
-        todoItems: [{ id: generateId(), done: false, ...action.data.todoItem }, ...state.todoItems],
+        todoItems: [{ id: generateId(), done: false, ...action.data.todoItem as TodoItemNew}, ...state.todoItems],
       };
     case 'delete':
       return {
