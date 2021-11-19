@@ -12,7 +12,6 @@ export interface TodoItemNew {
   details?: string;
 }
 
-
 interface TodoItemsState {
   todoItems: TodoItem[];
 }
@@ -22,7 +21,7 @@ interface IData {
   id?: string;
   dragResult?: DropResult;
   todoItem?: TodoItem;
-  todoItemNew?: TodoItemNew
+  todoItemNew?: TodoItemNew;
 }
 interface TodoItemsAction {
   type: 'loadState' | 'add' | 'delete' | 'toggleDone' | 'saveDrop';
@@ -90,12 +89,12 @@ function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction): TodoI
       return { ...state };
     }
     case 'loadState': {
-      return (action.data as TodoItemsState);
+      return action.data as TodoItemsState;
     }
     case 'add':
       return {
         ...state,
-        todoItems: [{ id: generateId(), done: false, ...action.data.todoItem as TodoItemNew}, ...state.todoItems],
+        todoItems: [{ id: generateId(), done: false, ...(action.data.todoItemNew as TodoItemNew) }, ...state.todoItems],
       };
     case 'delete':
       return {
