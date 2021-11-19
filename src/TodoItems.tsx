@@ -11,11 +11,12 @@ import { makeStyles } from '@material-ui/core/styles';
 import classnames from 'classnames';
 import { motion } from 'framer-motion';
 import { TodoItem, useTodoItems } from './TodoItemsContext';
+import { DragDropContext, Draggable, Droppable, DropResult } from 'react-beautiful-dnd';
 
 const spring = {
     type: 'spring',
-    damping: 25,
-    stiffness: 120,
+    damping: 50,
+    stiffness: 1000,
     duration: 0.25,
 };
 
@@ -26,31 +27,60 @@ const useTodoItemListStyles = makeStyles({
     },
 });
 
+const getListStyle = (isDraggingOver: boolean) => ({
+  background: isDraggingOver ? "lightblue" : 'rgba(0, 0, 0, 0.12)'
+});
+
 export const TodoItemsList = function () {
-    const { todoItems } = useTodoItems();
-
-    const classes = useTodoItemListStyles();
-
-    const sortedItems = todoItems.slice().sort((a, b) => {
+    let { todoItems } = useTodoItems();
+    let sortedItems = todoItems.slice().sort((a, b) => {
         if (a.done && !b.done) {
             return 1;
         }
-
         if (!a.done && b.done) {
             return -1;
         }
-
         return 0;
     });
+    const { dispatch } = useTodoItems();
+    const classes = useTodoItemListStyles();
+    
+
+    const onDragEnd = useCallback(
+        (dragResult: DropResult) => {
+
+            return dispatch({ type: 'saveDrop', data: {sortedItems, dragResult}})
+        },
+        [sortedItems, dispatch]
+    );
 
     return (
-        <ul className={classes.root}>
-            {sortedItems.map((item) => (
-                <motion.li key={item.id} transition={spring} layout={true}>
-                    <TodoItemCard item={item} />
-                </motion.li>
-            ))}
-        </ul>
+        <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId = 'droppable'>
+                {(provided, snapshot) => (
+                    <ul className={classes.root}               
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        style={getListStyle(snapshot.isDraggingOver)}
+                    >
+                        {sortedItems.map((item, index) => (
+                            <Draggable key={item.id} draggableId={item.id} index={index}>
+                                {(provided) => (
+                                    <motion.li key={item.id} transition={spring} layout={true}>
+                                        <div ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            {...provided.dragHandleProps}>
+                                            <TodoItemCard item={item} />
+                                        </div>
+                                    </motion.li>
+                                )}
+                            </Draggable>
+                        ))}
+                        {provided.placeholder}
+                    </ul>
+                )}
+            </Droppable>
+        </DragDropContext>
     );
 };
 

@@ -18,7 +18,7 @@ interface TodoItemsState {
 }
 
 interface TodoItemsAction {
-    type: 'loadState' | 'add' | 'delete' | 'toggleDone';
+    type: 'loadState' | 'add' | 'delete' | 'toggleDone' | 'saveDrop';
     data: any;
 }
 
@@ -38,7 +38,6 @@ export const TodoItemsContextProvider = ({
 
     useEffect(() => {
         const savedState = localStorage.getItem(localStorageKey);
-
         if (savedState) {
             try {
                 dispatch({ type: 'loadState', data: JSON.parse(savedState) });
@@ -71,6 +70,23 @@ export const useTodoItems = () => {
 
 function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction) {
     switch (action.type) {
+        case 'saveDrop': {
+            if (action.data && action.data.dragResult.destination) {
+                const reorder = (list : TodoItem[], startIndex: number, endIndex: number) => {
+                    const result = Array.from(list);
+                    const [removed] = result.splice(startIndex, 1);
+                    result.splice(endIndex, 0, removed);
+                    return result;
+                };
+                action.data.sortedItems = reorder(
+                    action.data.sortedItems,
+                    action.data.dragResult.source.index,
+                    action.data.dragResult.destination.index
+                );
+                return {todoItems : [...(action.data.sortedItems)]}
+            }
+            return state
+        }
         case 'loadState': {
             return action.data;
         }
@@ -94,7 +110,6 @@ function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction) {
                 ({ id }) => id === action.data.id,
             );
             const item = state.todoItems[itemIndex];
-
             return {
                 ...state,
                 todoItems: [
