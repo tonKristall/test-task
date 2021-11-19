@@ -22,7 +22,6 @@ interface IData {
   id?: string;
   dragResult?: DropResult;
   todoItem?: TodoItem;
-  todoItems?: TodoItem[];
   todoItemNew?: TodoItemNew
 }
 interface TodoItemsAction {
